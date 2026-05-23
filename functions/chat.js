@@ -7,6 +7,10 @@ exports.handler = async function(event) {
     const { messages, systemPrompt } = JSON.parse(event.body);
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
+    if (!GEMINI_API_KEY) {
+      return { statusCode: 500, body: JSON.stringify({ reply: 'ERRO: Chave não encontrada' }) };
+    }
+
     const contents = messages.map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }]
@@ -26,7 +30,12 @@ exports.handler = async function(event) {
     );
 
     const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Desculpe, tive um problema. Tente novamente.';
+    
+    if (!response.ok) {
+      return { statusCode: 200, body: JSON.stringify({ reply: 'ERRO API: ' + JSON.stringify(data) }) };
+    }
+
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta';
 
     return {
       statusCode: 200,
@@ -35,8 +44,8 @@ exports.handler = async function(event) {
     };
   } catch (err) {
     return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message })
+      statusCode: 200,
+      body: JSON.stringify({ reply: 'ERRO: ' + err.message })
     };
   }
 };
